@@ -13,7 +13,8 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  // Any localhost / 127.0.0.1 port, so Vite can fall back to 5174, 5175... when 5173 is busy.
+  origin: [/^http:\/\/(localhost|127\.0\.0\.1):\d+$/],
   credentials: true,
 }));
 app.use(express.json({ limit: '5mb' }));

@@ -5,9 +5,9 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "dev": "node src/index.js",
-    "watch": "node --watch --watch-path=src/routes --watch-path=src/index.js src/index.js",
-    "start": "node src/index.js"
+    "dev": "node --use-system-ca src/index.js",
+    "watch": "node --use-system-ca --watch --watch-path=src/routes --watch-path=src/index.js src/index.js",
+    "start": "node --use-system-ca src/index.js"
   },
   "keywords": [
     "chess",

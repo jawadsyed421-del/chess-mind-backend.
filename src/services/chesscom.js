@@ -1,6 +1,9 @@
 import axios from 'axios';
 
 const CHESSCOM_API = 'https://api.chess.com/pub';
+const DEFAULT_HEADERS = {
+  'User-Agent': 'ChessMind-App/1.0 (https://github.com/chessmind)',
+};
 
 /**
  * Fetch player profile from Chess.com
@@ -8,7 +11,7 @@ const CHESSCOM_API = 'https://api.chess.com/pub';
 export async function getChessComProfile(username) {
   try {
     const response = await axios.get(`${CHESSCOM_API}/player/${username}`, {
-      headers: { 'Accept': 'application/json' }
+      headers: { ...DEFAULT_HEADERS, 'Accept': 'application/json' }
     });
     return {
       username: response.data.username,
@@ -23,6 +26,7 @@ export async function getChessComProfile(username) {
     if (error.response?.status === 404) {
       throw new Error(`Chess.com player "${username}" not found`);
     }
+    console.error('Chess.com profile error:', error.code, error.message, error.response?.status);
     throw new Error('Failed to connect to Chess.com API');
   }
 }
@@ -33,7 +37,7 @@ export async function getChessComProfile(username) {
 export async function getChessComStats(username) {
   try {
     const response = await axios.get(`${CHESSCOM_API}/player/${username}/stats`, {
-      headers: { 'Accept': 'application/json' }
+      headers: { ...DEFAULT_HEADERS, 'Accept': 'application/json' }
     });
     const data = response.data;
     const stats = {};
@@ -63,7 +67,7 @@ export async function getChessComStats(username) {
 export async function getChessComArchives(username) {
   try {
     const response = await axios.get(`${CHESSCOM_API}/player/${username}/games/archives`, {
-      headers: { 'Accept': 'application/json' }
+      headers: { ...DEFAULT_HEADERS, 'Accept': 'application/json' }
     });
     return response.data.archives || [];
   } catch (error) {
@@ -77,7 +81,7 @@ export async function getChessComArchives(username) {
 export async function getChessComMonthlyGames(archiveUrl) {
   try {
     const response = await axios.get(archiveUrl, {
-      headers: { 'Accept': 'application/json' }
+      headers: { ...DEFAULT_HEADERS, 'Accept': 'application/json' }
     });
     return response.data.games || [];
   } catch (error) {

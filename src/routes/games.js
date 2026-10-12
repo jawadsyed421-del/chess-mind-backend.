@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { requireOwnership } from '../utils/ownership.js';
 import { fetchChessComGames } from '../services/chesscom.js';
 import { fetchLichessGames } from '../services/lichess.js';
 import { supabase } from '../config/supabase.js';
@@ -12,7 +13,7 @@ const gameStore = new Map();
  * POST /api/games/fetch
  * Fetch games from Chess.com or Lichess and store them
  */
-router.post('/fetch', async (req, res) => {
+router.post('/fetch', requireOwnership(req => req.body), async (req, res) => {
   try {
     const { platform, username, user_id, max_games = 50 } = req.body;
 
@@ -77,7 +78,7 @@ router.post('/fetch', async (req, res) => {
  * GET /api/games/list
  * Get stored games for a user
  */
-router.get('/list', async (req, res) => {
+router.get('/list', requireOwnership(req => req.query), async (req, res) => {
   try {
     const { platform, username, user_id } = req.query;
 

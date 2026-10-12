@@ -1,6 +1,9 @@
 import axios from 'axios';
 
 const LICHESS_API = 'https://lichess.org/api';
+const DEFAULT_HEADERS = {
+  'User-Agent': 'ChessMind-App/1.0 (https://github.com/chessmind)',
+};
 
 /**
  * Fetch player profile from Lichess
@@ -8,7 +11,7 @@ const LICHESS_API = 'https://lichess.org/api';
 export async function getLichessProfile(username) {
   try {
     const response = await axios.get(`${LICHESS_API}/user/${username}`, {
-      headers: { 'Accept': 'application/json' }
+      headers: { ...DEFAULT_HEADERS, 'Accept': 'application/json' }
     });
     const data = response.data;
     return {
@@ -34,7 +37,7 @@ export async function getLichessProfile(username) {
 export async function getLichessStats(username) {
   try {
     const response = await axios.get(`${LICHESS_API}/user/${username}`, {
-      headers: { 'Accept': 'application/json' }
+      headers: { ...DEFAULT_HEADERS, 'Accept': 'application/json' }
     });
     const perfs = response.data.perfs || {};
     const stats = {};
@@ -80,6 +83,7 @@ export async function fetchLichessGames(username, maxGames = 50) {
           opening: true,
         },
         headers: {
+          ...DEFAULT_HEADERS,
           'Accept': 'application/x-ndjson'
         },
         responseType: 'text'
