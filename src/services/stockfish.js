@@ -35,7 +35,13 @@ export class StockfishService {
       const STOCKFISH = require('stockfish');
 
       if (typeof STOCKFISH === 'function') {
-        const engine = await STOCKFISH();
+        // The default build loads a ~95 MB network (about 560 MB RAM), which exceeds small hosts.
+        // Set STOCKFISH_VARIANT=lite-single (the default on Render) for a ~100 MB engine.
+        const variant = process.env.STOCKFISH_VARIANT || (process.env.RENDER ? 'lite-single' : '');
+        const enginePath = variant
+          ? path.join(path.dirname(require.resolve('stockfish')), 'bin', `stockfish-19-${variant}.js`)
+          : undefined;
+        const engine = await STOCKFISH(enginePath);
         this.wasmEngine = engine;
         engine.listener = (msg) => this._onMessage(msg);
         engine.print = (msg) => this._onMessage(msg);
