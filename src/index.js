@@ -14,7 +14,11 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(cors({
   // Any localhost / 127.0.0.1 port, so Vite can fall back to 5174, 5175... when 5173 is busy.
-  origin: [/^http:\/\/(localhost|127\.0\.0\.1):\d+$/],
+  origin: [
+    /^http:\/\/(localhost|127\.0\.0\.1):\d+$/,
+    // Deployed frontends: comma-separated list, e.g. CORS_ORIGINS=https://chess-mind.vercel.app
+    ...(process.env.CORS_ORIGINS || '').split(',').map(o => o.trim().replace(/\/$/, '')).filter(Boolean),
+  ],
   credentials: true,
 }));
 app.use(express.json({ limit: '5mb' }));
