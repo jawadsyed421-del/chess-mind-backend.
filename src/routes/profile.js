@@ -4,7 +4,7 @@ import { getLichessProfile, getLichessStats, fetchLichessGames } from '../servic
 import { supabase } from '../config/supabase.js';
 
 import axios from 'axios';
-import { issueOwnershipToken, requireOwnership } from '../utils/ownership.js';
+import { issueOwnershipToken } from '../utils/ownership.js';
 
 const router = Router();
 
@@ -66,7 +66,7 @@ router.post('/verify-lichess', async (req, res) => {
  * POST /api/profile/connect
  * Connect a Chess.com or Lichess profile
  */
-router.post('/connect', requireOwnership(req => req.body), async (req, res) => {
+router.post('/connect', async (req, res) => {
   try {
     const { platform, username, user_id } = req.body;
 
@@ -119,7 +119,7 @@ router.post('/connect', requireOwnership(req => req.body), async (req, res) => {
  * GET /api/profile/:platform/:username
  * Get profile info
  */
-router.get('/:platform/:username', requireOwnership(req => req.params), async (req, res) => {
+router.get('/:platform/:username', async (req, res) => {
   try {
     const { platform, username } = req.params;
 
