@@ -1,5 +1,7 @@
 import { Router } from 'express';
+import { Chess } from 'chess.js';
 import { analyzeGame } from '../services/gameAnalyzer.js';
+import { getStockfish } from '../services/stockfish.js';
 import { supabase } from '../config/supabase.js';
 
 const router = Router();
@@ -9,6 +11,51 @@ const analysisStore = new Map();
 
 // Track active analysis jobs
 const activeJobs = new Map();
+
+// The engine is a single instance, so position requests run one at a time.
+let engineQueue = Promise.resolve();
+
+/**
+ * POST /api/analysis/position
+ * Evaluate one position: score (pawns, White's view), best move and the main line, all in SAN.
+ */
+router.post('/position', async (req, res) => {
+  const { fen, depth = 14 } = req.body || {};
+  try {
+    new Chess(fen);
+  } catch {
+    return res.status(400).json({ error: 'Invalid FEN' });
+  }
+
+  const job = engineQueue.then(async () => {
+    const stockfish = await getStockfish();
+    const result = await stockfish.evaluatePosition(fen, Math.min(Math.max(Number(depth) || 14, 8), 18));
+    const line = new Chess(fen);
+    const pvSan = [];
+    for (const uci of (result.pv || '').split(' ').filter(Boolean).slice(0, 6)) {
+      try {
+        pvSan.push(line.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] }).san);
+      } catch {
+        break;
+      }
+    }
+    return {
+      score: result.score,
+      mate: result.mate,
+      bestMove: result.bestMove,
+      bestMoveSan: stockfish.uciToSan(fen, result.bestMove),
+      pv: pvSan,
+    };
+  });
+  engineQueue = job.catch(() => {});
+
+  try {
+    res.json(await job);
+  } catch (error) {
+    console.error('Position eval error:', error.message);
+    res.status(500).json({ error: 'Engine evaluation failed' });
+  }
+});
 
 /**
  * POST /api/analysis/analyze

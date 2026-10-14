@@ -81,6 +81,7 @@ export async function fetchLichessGames(username, maxGames = 50) {
           clocks: false,
           evals: false,
           opening: true,
+          accuracy: true,
         },
         headers: {
           ...DEFAULT_HEADERS,
@@ -128,6 +129,8 @@ export async function fetchLichessGames(username, maxGames = 50) {
         analysis_status: 'pending',
         white_rating: game.players?.white?.rating || null,
         black_rating: game.players?.black?.rating || null,
+        white_accuracy: game.players?.white?.analysis?.accuracy ?? null,
+        black_accuracy: game.players?.black?.analysis?.accuracy ?? null,
       };
     });
   } catch (error) {

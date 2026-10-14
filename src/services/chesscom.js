@@ -136,6 +136,8 @@ export async function fetchChessComGames(username, maxGames = 50) {
         analysis_status: 'pending',
         white_rating: game.white?.rating || null,
         black_rating: game.black?.rating || null,
+        white_accuracy: game.accuracies?.white ?? null,
+        black_accuracy: game.accuracies?.black ?? null,
       });
     }
   }
@@ -148,7 +150,7 @@ export async function fetchChessComGames(username, maxGames = 50) {
  */
 function extractOpening(pgn) {
   if (!pgn) return 'Unknown Opening';
-  const match = pgn.match(/\[ECOUrl ".*?\/([^"]+)"\]/);
+  const match = pgn.match(/\[ECOUrl "[^"]*\/openings\/([^"]+)"\]/i);
   if (match) {
     return match[1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   }
