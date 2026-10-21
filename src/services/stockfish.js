@@ -185,14 +185,15 @@ export class StockfishService {
    * @param {number} depth - Search depth (12-16 recommended)
    * @returns {{ score: number, bestMove: string, mate: number|null, pv: string }}
    */
-  async evaluatePosition(fen, depth = 12) {
+  async evaluatePosition(fen, depth = 12, moveTimeMs = 0) {
     if (this.useHeuristic || !this.ready) {
       return this._heuristicEval(fen);
     }
 
     this.outputBuffer = [];
     this._sendCommand(`position fen ${fen}`);
-    this._sendCommand(`go depth ${depth}`);
+    // movetime caps the search so a slow host still finishes a whole game quickly
+    this._sendCommand(moveTimeMs > 0 ? `go depth ${depth} movetime ${moveTimeMs}` : `go depth ${depth}`);
 
     const output = await this._waitForMessage('bestmove', 30000);
     return this._parseEvalOutput(output, fen);

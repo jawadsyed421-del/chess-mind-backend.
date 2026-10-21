@@ -57,67 +57,21 @@ router.post('/position', async (req, res) => {
   }
 });
 
-/**
- * POST /api/analysis/analyze
- * Analyze a game using Stockfish + Mistake Classifier + Theme Detector
- */
-router.post('/analyze', async (req, res) => {
+// Runs the engine over a game and stores the result.
+async function runGameAnalysis(pgn, playerColor, depth, gameId) {
+  if (gameId && supabase) {
+    await supabase.from('games').update({ analysis_status: 'analyzing' }).eq('id', gameId);
+  }
   try {
-    const { pgn, player_color, game_id, depth = 14 } = req.body;
-
-    if (!pgn) {
-      return res.status(400).json({ error: 'PGN is required' });
-    }
-
-    if (!player_color || !['white', 'black'].includes(player_color)) {
-      return res.status(400).json({ error: 'player_color must be "white" or "black"' });
-    }
-
-    // Check if already analyzing this game
-    if (game_id && activeJobs.has(game_id)) {
-      return res.json({
-        status: 'analyzing',
-        message: 'This game is already being analyzed. Check back shortly.',
-      });
-    }
-
-    // Mark as active
-    if (game_id) {
-      activeJobs.set(game_id, true);
-
-      // Update game status in Supabase
+    const result = await analyzeGame(pgn, playerColor, Math.min(Number(depth) || 12, 16));
+    if (gameId) {
+      analysisStore.set(gameId, result);
+      if (analysisStore.size > 300) analysisStore.delete(analysisStore.keys().next().value); // keep memory bounded
       if (supabase) {
-        await supabase
-          .from('games')
-          .update({ analysis_status: 'analyzing' })
-          .eq('id', game_id);
-      }
-    }
-
-    // Run the full analysis pipeline
-    console.log(`\n  ═══════════════════════════════════════`);
-    console.log(`  ♟️  ChessMind Analysis Engine Starting`);
-    console.log(`  ═══════════════════════════════════════`);
-
-    const result = await analyzeGame(pgn, player_color, Math.min(depth, 16));
-
-    // Store results
-    if (game_id) {
-      analysisStore.set(game_id, result);
-      activeJobs.delete(game_id);
-
-      // Store in Supabase if available
-      if (supabase) {
-        // Update game status
-        await supabase
-          .from('games')
-          .update({ analysis_status: 'complete' })
-          .eq('id', game_id);
-
-        // Store individual move analysis entries
+        await supabase.from('games').update({ analysis_status: 'complete' }).eq('id', gameId);
         for (const mistake of result.mistakes) {
           await supabase.from('move_analysis').upsert({
-            game_id,
+            game_id: gameId,
             move_number: mistake.moveNumber,
             player_color: mistake.color === 'w' ? 'white' : 'black',
             fen_before: mistake.fenBefore,
@@ -135,6 +89,50 @@ router.post('/analyze', async (req, res) => {
         }
       }
     }
+    return result;
+  } catch (error) {
+    if (gameId && supabase) {
+      await supabase.from('games').update({ analysis_status: 'pending' }).eq('id', gameId).catch(() => {});
+    }
+    throw error;
+  }
+}
+
+/**
+ * POST /api/analysis/analyze
+ * Analyze a game using Stockfish + Mistake Classifier + Theme Detector
+ */
+router.post('/analyze', async (req, res) => {
+  try {
+    const { pgn, player_color, game_id, depth = 14 } = req.body;
+
+    if (!pgn) {
+      return res.status(400).json({ error: 'PGN is required' });
+    }
+
+    if (!player_color || !['white', 'black'].includes(player_color)) {
+      return res.status(400).json({ error: 'player_color must be "white" or "black"' });
+    }
+
+    const force = req.body.force === true;
+
+    // Already analysed: answer instantly
+    if (game_id && !force && analysisStore.has(game_id)) {
+      return res.json({ status: 'complete', analysis: analysisStore.get(game_id), cached: true });
+    }
+
+    // Already being analysed (e.g. by the background import job): wait for that run instead of starting another
+    let job = game_id ? activeJobs.get(game_id) : null;
+    if (!job) {
+      // The engine is a single instance, so games and position requests take turns.
+      job = engineQueue.then(() => runGameAnalysis(pgn, player_color, depth, game_id));
+      engineQueue = job.catch(() => {});
+      if (game_id) {
+        activeJobs.set(game_id, job);
+        job.then(() => activeJobs.delete(game_id), () => activeJobs.delete(game_id));
+      }
+    }
+    const result = await job;
 
     res.json({
       status: 'complete',
@@ -142,19 +140,6 @@ router.post('/analyze', async (req, res) => {
     });
   } catch (error) {
     console.error('Analysis error:', error);
-
-    // Clean up
-    const { game_id } = req.body;
-    if (game_id) {
-      activeJobs.delete(game_id);
-      if (supabase) {
-        await supabase
-          .from('games')
-          .update({ analysis_status: 'pending' })
-          .eq('id', game_id)
-          .catch(() => {});
-      }
-    }
 
     res.status(500).json({ error: error.message || 'Analysis failed' });
   }

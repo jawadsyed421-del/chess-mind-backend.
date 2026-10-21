@@ -24,6 +24,9 @@ import { generateExplanation, generateGameSummary } from './explanationGenerator
  * @param {function} onProgress - Optional callback(moveIndex, totalMoves) for progress updates
  * @returns {object} Full analysis result
  */
+// Upper bound per position. Without it a free-tier CPU needs minutes per game.
+const MOVE_TIME_MS = Number(process.env.ANALYSIS_MOVETIME_MS) || 350;
+
 export async function analyzeGame(pgn, playerColor, depth = 14, onProgress = null) {
   const startTime = Date.now();
   const searchDepth = Math.max(1, Math.min(parseInt(depth, 10) || 12, 16));
@@ -54,7 +57,7 @@ export async function analyzeGame(pgn, playerColor, depth = 14, onProgress = nul
   const replayChess = new Chess(); // Replay from start position
 
   // Initial evaluation for starting position
-  let currentEval = await stockfish.evaluatePosition(replayChess.fen(), searchDepth);
+  let currentEval = await stockfish.evaluatePosition(replayChess.fen(), searchDepth, MOVE_TIME_MS);
 
   for (let i = 0; i < totalMoves; i++) {
     const move = history[i];
@@ -66,7 +69,7 @@ export async function analyzeGame(pgn, playerColor, depth = 14, onProgress = nul
     const fenAfter = replayChess.fen();
 
     // Evaluate position AFTER the move
-    const evalAfter = await stockfish.evaluatePosition(fenAfter, searchDepth);
+    const evalAfter = await stockfish.evaluatePosition(fenAfter, searchDepth, MOVE_TIME_MS);
     currentEval = evalAfter;
 
     // Convert best move UCI to SAN
