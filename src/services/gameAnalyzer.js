@@ -24,6 +24,20 @@ import { generateExplanation, generateGameSummary } from './explanationGenerator
  * @param {function} onProgress - Optional callback(moveIndex, totalMoves) for progress updates
  * @returns {object} Full analysis result
  */
+// First few moves of the engine's best line, in SAN ("e2e4 e7e5 g1f3" -> ["e4","e5","Nf3"]).
+function uciLineToSan(fen, pv, max = 5) {
+  const line = new Chess(fen);
+  const out = [];
+  for (const uci of (pv || '').split(' ').filter(Boolean).slice(0, max)) {
+    try {
+      out.push(line.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] }).san);
+    } catch {
+      break;
+    }
+  }
+  return out;
+}
+
 // Upper bound per position. Without it a free-tier CPU needs minutes per game.
 const MOVE_TIME_MS = Number(process.env.ANALYSIS_MOVETIME_MS) || 350;
 
@@ -89,6 +103,7 @@ export async function analyzeGame(pgn, playerColor, depth = 14, onProgress = nul
       bestMoveUci: evalBefore.bestMove,
       bestMoveSan: bestMoveSan || move.san,
       mate: evalBefore.mate,
+      pvSan: uciLineToSan(fenBefore, evalBefore.pv),
     });
 
     // Progress callback

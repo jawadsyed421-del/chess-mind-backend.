@@ -213,7 +213,7 @@ export class StockfishService {
       if (line.includes('info') && line.includes('score')) {
         const cpMatch = line.match(/score cp (-?\d+)/);
         const mateMatch = line.match(/score mate (-?\d+)/);
-        const pvMatch = line.match(/pv (.+)/);
+        const pvMatch = line.match(/ pv ((?:[a-h][1-8][a-h][1-8][qrbn]?\s*)+)/); // not the "pv" inside "multipv"
 
         if (cpMatch) {
           score = parseInt(cpMatch[1]) / 100; // Convert centipawns to pawns
